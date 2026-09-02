@@ -1,0 +1,187 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  student
+  admin
+}
+
+enum Level {
+  beginner
+  intermediate
+  advanced
+}
+
+model User {
+  id            String          @id @default(uuid()) @db.Uuid
+  email         String          @unique @db.VarChar(255)
+  passwordHash  String          @map("password_hash") @db.VarChar(255)
+  fullName      String          @map("full_name") @db.VarChar(150)
+  role          Role            @default(student)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  enrollments    Enrollment[]
+  lessonProgress LessonProgress[]
+  quizAttempts   QuizAttempt[]
+
+  @@map("users")
+}
+
+model Course {
+  id           String        @id @default(uuid()) @db.Uuid
+  title        String        @db.VarChar(255)
+  slug         String        @unique @db.VarChar(255)
+  description  String?       @db.Text
+  thumbnailUrl String?       @map("thumbnail_url") @db.VarChar(500)
+  level        Level         @default(beginner)
+  isPublished  Boolean       @default(true) @map("is_published")
+  orderIndex   Int           @default(0) @map("order_index")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  modules     Module[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Module {
+  id          String   @id @default(uuid()) @db.Uuid
+  courseId    String   @map("course_id") @db.Uuid
+  title       String   @db.VarChar(255)
+  slug        String   @db.VarChar(255)
+  description String?  @db.Text
+  orderIndex  Int      @default(0) @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([courseId, slug], name: "uq_module_course_slug")
+  @@index([courseId])
+  @@map("modules")
+}
+
+model Lesson {
+  id             String   @id @default(uuid()) @db.Uuid
+  moduleId       String   @map("module_id") @db.Uuid
+  title          String   @db.VarChar(255)
+  slug           String   @db.VarChar(255)
+  youtubeVideoId String   @map("youtube_video_id") @db.VarChar(50)
+  summaryContent String?  @map("summary_content") @db.Text
+  speakingPrompt String?  @map("speaking_prompt") @db.Text
+  orderIndex     Int      @default(0) @map("order_index")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  module         Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  quiz           Quiz?
+  lessonProgress LessonProgress[]
+
+  @@unique([moduleId, slug], name: "uq_lesson_module_slug")
+  @@index([moduleId])
+  @@map("lessons")
+}
+
+model Enrollment {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  courseId       String   @map("course_id") @db.Uuid
+  enrolledAt     DateTime @default(now()) @map("enrolled_at") @db.Timestamptz
+  lastAccessedAt DateTime @default(now()) @map("last_accessed_at") @db.Timestamptz
+  isActive       Boolean  @default(true) @map("is_active")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId], name: "uq_user_course_enrollment")
+  @@index([userId, isActive])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  lessonId         String    @map("lesson_id") @db.Uuid
+  videoCompleted   Boolean   @default(false) @map("video_completed")
+  videoCompletedAt DateTime? @map("video_completed_at") @db.Timestamptz
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId], name: "uq_user_lesson_progress")
+  @@index([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+model Quiz {
+  id           String   @id @default(uuid()) @db.Uuid
+  lessonId     String   @unique @map("lesson_id") @db.Uuid
+  title        String   @db.VarChar(255)
+  passingScore Int      @default(70) @map("passing_score")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id           String   @id @default(uuid()) @db.Uuid
+  quizId       String   @map("quiz_id") @db.Uuid
+  questionText String   @map("question_text") @db.Text
+  explanation  String?  @db.Text
+  orderIndex   Int      @default(0) @map("order_index")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options QuizOption[]
+
+  @@index([quizId])
+  @@map("quiz_questions")
+}
+
+model QuizOption {
+  id         String  @id @default(uuid()) @db.Uuid
+  questionId String  @map("question_id") @db.Uuid
+  optionText String  @map("option_text") @db.Text
+  isCorrect  Boolean @default(false) @map("is_correct")
+  orderIndex Int     @default(0) @map("order_index")
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("quiz_options")
+}
+
+model QuizAttempt {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  quizId         String   @map("quiz_id") @db.Uuid
+  score          Int
+  isPassed       Boolean  @default(false) @map("is_passed")
+  answersPayload Json     @default("[]") @map("answers_payload")
+  startedAt      DateTime @default(now()) @map("started_at") @db.Timestamptz
+  submittedAt    DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId, quizId, score(sort: Desc)])
+  @@index([userId, submittedAt(sort: Desc)])
+  @@map("quiz_attempts")
+}
