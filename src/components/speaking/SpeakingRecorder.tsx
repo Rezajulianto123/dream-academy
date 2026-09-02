@@ -44,6 +44,7 @@ export function SpeakingRecorder({ promptText }: SpeakingRecorderProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioUrlRef = useRef<string | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   const stopHardwareTracks = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -97,6 +98,10 @@ export function SpeakingRecorder({ promptText }: SpeakingRecorderProps) {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       mediaStreamRef.current = stream;
 
       const mimeType = getSupportedAudioMimeType();
@@ -112,6 +117,9 @@ export function SpeakingRecorder({ promptText }: SpeakingRecorderProps) {
       };
 
       recorder.onstop = () => {
+        if (!isMountedRef.current) {
+          return;
+        }
         const finalMimeType = recorder.mimeType || mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
@@ -173,7 +181,9 @@ export function SpeakingRecorder({ promptText }: SpeakingRecorderProps) {
 
   // Cleanup on unmount or navigation
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
