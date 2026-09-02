@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { YouTubePlayer } from '@/components/video/YouTubePlayer';
+import { SpeakingPracticeSection } from '@/components/speaking/SpeakingPracticeSection';
 import { CourseService } from '@/services/course.service';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/jwt';
@@ -76,19 +77,14 @@ export default async function LessonRoomPage({
               initialVideoCompleted={lessonData.user_progress.video_completed}
             />
 
-            {/* Speaking Practice Card (Phase 4 Preparation) */}
+            {/* In-Browser Local Speaking Practice (Phase 4 PRD-04) */}
             {lessonData.speaking_prompt && (
-              <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-200 p-6 shadow-sm space-y-3">
-                <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm">
-                  <span>🗣️ Panduan Speaking Practice</span>
-                </div>
-                <p className="text-sm font-medium text-slate-800 whitespace-pre-line bg-white/80 p-4 rounded-lg border border-indigo-100">
-                  {lessonData.speaking_prompt}
-                </p>
-                <p className="text-xs text-indigo-600 italic">
-                  💡 Tips: Latihlah berbicara dengan lantang. Fitur perekaman suara lokal in-browser akan aktif pada Phase 4.
-                </p>
-              </div>
+              <SpeakingPracticeSection
+                speakingPrompt={lessonData.speaking_prompt}
+                lessonTitle={lessonData.title}
+                courseSlug={params.slug}
+                lessonSlug={params.lessonSlug}
+              />
             )}
 
             {/* Rangkuman Materi Markdown */}

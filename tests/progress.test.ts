@@ -19,6 +19,10 @@ describe('ProgressService Unit Tests (Phase 3)', () => {
     });
     sampleUserId = user.id;
 
+    // Clean up any existing state from previous test runs
+    await db.lessonProgress.deleteMany({ where: { userId: sampleUserId } });
+    await db.quizAttempt.deleteMany({ where: { userId: sampleUserId } });
+
     const lesson = await db.lesson.findFirst({
       where: { slug: 'mindset-fluency-over-perfection' },
     });
