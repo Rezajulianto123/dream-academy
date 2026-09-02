@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { db } from '@/lib/db';
 import { signToken, verifyToken } from '@/lib/jwt';
 import { middleware } from '@/middleware';
 import { GET as adminHealthRoute } from '@/app/api/v1/admin/health/route';
+import { runAdminSeed } from '@/../prisma/seed-admin';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 
@@ -151,8 +152,85 @@ describe('Phase 6 — BUILD-06.1 Core Admin RBAC Guard & Authorization Matrix Te
     });
   });
 
-  describe('4. Schema Migration & Default Published Values', () => {
-    it('should ensure newly created Module and Lesson default to isPublished = true', async () => {
+  describe('4. Hardened Admin Seed Security (npm run seed:admin)', () => {
+    const originalEmail = process.env.ADMIN_EMAIL;
+    const originalPassword = process.env.ADMIN_PASSWORD;
+
+    afterEach(() => {
+      process.env.ADMIN_EMAIL = originalEmail;
+      process.env.ADMIN_PASSWORD = originalPassword;
+    });
+
+    it('A. ADMIN_EMAIL missing -> provisioning fails (throws error)', async () => {
+      delete process.env.ADMIN_EMAIL;
+      process.env.ADMIN_PASSWORD = 'SomePassword123!';
+
+      await expect(runAdminSeed()).rejects.toThrow(
+        'FATAL: ADMIN_EMAIL environment variable is required'
+      );
+    });
+
+    it('B. ADMIN_PASSWORD missing -> provisioning fails (throws error)', async () => {
+      process.env.ADMIN_EMAIL = 'new_admin@test.com';
+      delete process.env.ADMIN_PASSWORD;
+
+      await expect(runAdminSeed()).rejects.toThrow(
+        'FATAL: ADMIN_PASSWORD environment variable is required'
+      );
+    });
+
+    it('C. New admin created when env vars provided', async () => {
+      const testEmail = `seed_test_${Date.now()}@test.com`;
+      const testPassword = 'Password123!';
+      process.env.ADMIN_EMAIL = testEmail;
+      process.env.ADMIN_PASSWORD = testPassword;
+
+      const createdAdmin = await runAdminSeed();
+      expect(createdAdmin.email).toBe(testEmail);
+      expect(createdAdmin.role).toBe('admin');
+
+      const isPasswordValid = await bcrypt.compare(testPassword, createdAdmin.passwordHash);
+      expect(isPasswordValid).toBe(true);
+
+      // Cleanup
+      await db.user.delete({ where: { id: createdAdmin.id } });
+    });
+
+    it('D & E. Re-running provisioning does not create duplicate and keeps existing password', async () => {
+      const testEmail = `seed_existing_${Date.now()}@test.com`;
+      const initialPassword = 'InitialSecret123!';
+      
+      const originalUser = await db.user.create({
+        data: {
+          email: testEmail,
+          passwordHash: await bcrypt.hash(initialPassword, 10),
+          fullName: 'Original User',
+          role: 'student',
+        },
+      });
+
+      process.env.ADMIN_EMAIL = testEmail;
+      process.env.ADMIN_PASSWORD = 'DifferentPassword456!';
+
+      // Run seed:admin on existing user
+      const seededUser = await runAdminSeed();
+      expect(seededUser.id).toBe(originalUser.id);
+      expect(seededUser.role).toBe('admin');
+
+      // Verify existing password was NOT overwritten with DifferentPassword456!
+      const isInitialPasswordStillValid = await bcrypt.compare(initialPassword, seededUser.passwordHash);
+      expect(isInitialPasswordStillValid).toBe(true);
+
+      const isNewPasswordValid = await bcrypt.compare('DifferentPassword456!', seededUser.passwordHash);
+      expect(isNewPasswordValid).toBe(false);
+
+      // Cleanup
+      await db.user.delete({ where: { id: originalUser.id } });
+    });
+  });
+
+  describe('5. Database Migration Schema Default Tests (Blocker 2 Fix)', () => {
+    it('F & G. should ensure newly created Module and Lesson default to isPublished = true without passing it explicitly', async () => {
       const course = await db.course.create({
         data: {
           title: 'Schema Test Course',
@@ -161,25 +239,26 @@ describe('Phase 6 — BUILD-06.1 Core Admin RBAC Guard & Authorization Matrix Te
         },
       });
 
+      // Module created WITHOUT supplying isPublished
       const module = await db.module.create({
         data: {
           courseId: course.id,
           title: 'Schema Test Module',
           slug: 'schema-test-module',
-          isPublished: true,
         },
       });
 
+      // Lesson created WITHOUT supplying isPublished
       const lesson = await db.lesson.create({
         data: {
           moduleId: module.id,
           title: 'Schema Test Lesson',
           slug: 'schema-test-lesson',
           youtubeVideoId: 'dQw4w9WgXcQ',
-          isPublished: true,
         },
       });
 
+      // Assert database / schema defaults
       expect(module.isPublished).toBe(true);
       expect(lesson.isPublished).toBe(true);
 
