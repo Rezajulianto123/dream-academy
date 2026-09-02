@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { YouTubePlayer } from '@/components/video/YouTubePlayer';
 import { SpeakingRecorder } from '@/components/speaking/SpeakingRecorder';
+import { CheckpointQuiz } from '@/components/quiz/CheckpointQuiz';
 import { CourseService } from '@/services/course.service';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/jwt';
@@ -94,27 +95,16 @@ export default async function LessonRoomPage({
               </div>
             )}
 
-            {/* Checkpoint Quiz Banner (Phase 5 Preparation) */}
+            {/* Checkpoint Quiz Component (Phase 5) */}
             {lessonData.quiz && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-                    Checkpoint Quiz
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {lessonData.quiz.title}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Passing score: {lessonData.quiz.passing_score}% • Unlimited Retakes (PRD-03)
-                  </p>
-                </div>
-                <button
-                  disabled
-                  className="px-4 py-2 bg-slate-100 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed border border-slate-200"
-                >
-                  Kuis Aktif pada Phase 5
-                </button>
-              </div>
+              <CheckpointQuiz
+                quizId={lessonData.quiz.id}
+                courseSlug={lessonData.course_slug}
+                lessonSlug={lessonData.slug}
+                initialBestScore={lessonData.user_progress?.best_quiz_score}
+                initialIsCompleted={lessonData.user_progress?.is_completed}
+                videoCompleted={lessonData.user_progress?.video_completed}
+              />
             )}
           </div>
 
