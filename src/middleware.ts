@@ -42,8 +42,17 @@ export function middleware(req: NextRequest) {
 
   // 2. Protection for CMS Browser Routes (/cms/*)
   if (pathname.startsWith('/cms')) {
-    // Allow public access to /cms/login
+    // Handle /cms/login route
     if (pathname === '/cms/login') {
+      const token = extractAuthToken(req);
+      const user = authenticate(req);
+
+      // Authenticated Admin visiting /cms/login -> Redirect to /cms (HTTP 307)
+      if (token && user && user.role === 'admin') {
+        const cmsDashboardUrl = new URL('/cms', req.url);
+        return NextResponse.redirect(cmsDashboardUrl);
+      }
+
       return NextResponse.next();
     }
 
