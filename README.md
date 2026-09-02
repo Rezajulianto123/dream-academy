@@ -30,7 +30,7 @@ flowchart LR
 
 1. **Chief of Staff (Mika - Orchestrator):** Mengoordinasikan alur kerja, mendistribusikan tugas antar agent, memantau dependensi, dan menjaga kepatuhan protokol.
 2. **Product Agent:** Merumuskan spesifikasi produk, *Product Requirements Document* ([`docs/PRD.md`](docs/PRD.md)), *user stories*, dan *acceptance criteria*.
-3. **Architect Agent:** Merancang arsitektur sistem ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), skema basis data ([`docs/DATABASE.md`](docs/DATABASE.md)), dan kontrak API ([`docs/API.md`](docs/API.md)).
+3. **Architect Agent:** Merancang arsitektur sistem ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), skema basis data ([`docs/DATABASE.md`](docs/DATABASE.md)), kontrak API ([`docs/API.md`](docs/API.md)), dan rencana implementasi teknis ([`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md)).
 4. **Builder Agent:** Mengimplementasikan kode program, *component utilities*, dan modul aplikasi pada *feature branch* yang terisolasi.
 5. **QA Agent:** Menjalankan pengujian otomatis, validasi regresi, audit keamanan, verifikasi *acceptance criteria*, dan menyiapkan *pull request*.
 
@@ -42,7 +42,7 @@ Seluruh aspek teknis dan operasional wajib tercatat dan tersinkronisasi di GitHu
 - **Code & Logic:** Seluruh implementasi kode berada di direktori `src/`.
 - **Automated Tests:** Seluruh test suite berada di direktori `tests/`.
 - **Engineering Constitution:** Panduan dan aturan operasional AI wajib merujuk ke [`docs/AI_RULES.md`](docs/AI_RULES.md).
-- **Technical Documentation:** Seluruh keputusan arsitektur, PRD, API, dan skema database disimpan dalam folder `docs/`.
+- **Technical Documentation:** Seluruh keputusan arsitektur, PRD, API, skema database, dan rencana implementasi disimpan dalam folder `docs/`.
 - **Standardized Review:** Setiap perubahan kode wajib melalui Pull Request menggunakan template [`.github/pull_request_template.md`](.github/pull_request_template.md).
 
 ---
@@ -60,6 +60,7 @@ dream-academy/
 │   ├── ARCHITECTURE.md                 # Architecture & System Design
 │   ├── DATABASE.md                     # Database Schema & Data Models
 │   ├── API.md                          # API Contracts & Endpoints
+│   ├── IMPLEMENTATION_PLAN.md          # Phased Roadmap, Builder Tasks & QA Checklist
 │   └── AI_RULES.md                     # Engineering Constitution untuk AI Agents
 ├── src/                                # Source code aplikasi
 ├── tests/                              # Unit, integration, & e2e test suites
