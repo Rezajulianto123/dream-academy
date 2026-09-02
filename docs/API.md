@@ -201,8 +201,9 @@
 ---
 
 ### 3.3. Enroll Course
-- **Method & Route:** `POST /api/v1/courses/:courseId/enroll`
+- **Method & Route:** `POST /api/v1/courses/:slug/enroll`
 - **Auth Required:** Yes
+- **Behavior:** Idempotent enrollment upsert. Jika siswa sudah terdaftar, mengembalikan enrollment yang sudah ada tanpa menduplikasi data.
 - **Response `200 OK`:**
   ```json
   {
@@ -210,7 +211,8 @@
     "data": {
       "enrollment_id": "e3333333-3333-3333-3333-333333333333",
       "course_id": "d2a6e9f1-7c34-4a2e-8d9b-11f8e452a901",
-      "enrolled_at": "2026-09-02T08:30:00Z"
+      "enrolled_at": "2026-09-02T08:30:00Z",
+      "is_active": true
     }
   }
   ```
@@ -219,9 +221,11 @@
 
 ## 4. Lesson & Practice Endpoints
 
-### 4.1. Get Lesson Details (Free Navigation Access)
-- **Method & Route:** `GET /api/v1/lessons/:lessonId`
+### 4.1. Get Lesson Details (Free Navigation & Auto-Enrollment)
+- **Method & Route (Hierarchical Slug — Primary):** `GET /api/v1/courses/:courseSlug/lessons/:lessonSlug`
+- **Method & Route (UUID Lookup — Secondary):** `GET /api/v1/lessons/:id`
 - **Auth Required:** Yes
+- **Behavior:** Mengambil detail materi lesson dan secara otomatis melakukan idempotent auto-enroll jika siswa belum terdaftar pada kursus terkait (PRD-01 / ADR-P2-01). Siswa bebas membuka lesson mana pun secara non-sekuensial.
 - **Response `200 OK`:**
   ```json
   {
@@ -235,11 +239,14 @@
       "speaking_prompt": "Katakan: 'Hello, my name is Reza and I am practicing my English speaking every single day!'",
       "order_index": 1,
       "module_id": "m1111111-1111-1111-1111-111111111111",
+      "module_title": "Module 1: Mindset & Fondasi Keberanian Berbicara",
+      "module_slug": "mindset-fondasi-keberanian",
       "course_id": "d2a6e9f1-7c34-4a2e-8d9b-11f8e452a901",
+      "course_title": "English for Confident Speaking: Dari Nol Sampai Berani Ngomong",
+      "course_slug": "english-for-confident-speaking",
       "quiz": {
         "id": "q1111111-1111-1111-1111-111111111111",
         "title": "Checkpoint Quiz: Mindset of Fluency",
-        "total_questions": 3,
         "passing_score": 70
       },
       "user_progress": {
@@ -247,7 +254,24 @@
         "is_completed": true,
         "best_quiz_score": 100,
         "total_quiz_attempts": 2
-      }
+      },
+      "syllabus": [
+        {
+          "id": "m1111111-1111-1111-1111-111111111111",
+          "title": "Module 1: Mindset & Fondasi Keberanian Berbicara",
+          "slug": "mindset-fondasi-keberanian",
+          "order_index": 1,
+          "lessons": [
+            {
+              "id": "l1111111-1111-1111-1111-111111111111",
+              "title": "Lesson 1: The Mindset of Fluency over Perfection",
+              "slug": "mindset-of-fluency",
+              "order_index": 1,
+              "is_current": true
+            }
+          ]
+        }
+      ]
     }
   }
   ```
