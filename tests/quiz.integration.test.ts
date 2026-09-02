@@ -6,6 +6,7 @@ import { POST as submitQuizByIdRoute } from '@/app/api/v1/quizzes/[id]/submit/ro
 import { GET as getAttemptsByIdRoute } from '@/app/api/v1/quizzes/[id]/attempts/route';
 import { GET as getQuizBySlugRoute } from '@/app/api/v1/courses/[slug]/lessons/[lessonSlug]/quiz/route';
 import { POST as submitQuizBySlugRoute } from '@/app/api/v1/courses/[slug]/lessons/[lessonSlug]/quiz/submit/route';
+import { POST as videoCompleteByIdRoute } from '@/app/api/v1/lessons/[id]/video-complete/route';
 import { NextRequest } from 'next/server';
 
 describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => {
@@ -486,21 +487,28 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
       expect(progressBeforeVideo?.videoCompleted).toBe(false);
       expect(progressBeforeVideo?.isCompleted).toBe(false);
 
-      // Now User B completes video
-      await db.lessonProgress.update({
-        where: {
-          uq_user_lesson_progress: {
-            userId: studentUserB.id,
-            lessonId: targetLesson.id,
+      // Now User B completes video using actual Phase 3 endpoint
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/lessons/${targetLesson.id}/video-complete`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${studentTokenB}`,
+            'content-type': 'application/json',
           },
-        },
-        data: {
-          videoCompleted: true,
-          videoCompletedAt: new Date(),
-          isCompleted: true,
-          completedAt: new Date(),
-        },
+          body: JSON.stringify({ playback_seconds: 180 }),
+        }
+      );
+
+      const videoRes = await videoCompleteByIdRoute(req, {
+        params: { id: targetLesson.id },
       });
+
+      expect(videoRes.status).toBe(200);
+      const videoJson = await videoRes.json();
+      expect(videoJson.success).toBe(true);
+      expect(videoJson.data.video_completed).toBe(true);
+      expect(videoJson.data.is_completed).toBe(true);
 
       const progressAfterVideo = await db.lessonProgress.findUnique({
         where: {
@@ -510,6 +518,7 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
           },
         },
       });
+      expect(progressAfterVideo?.videoCompleted).toBe(true);
       expect(progressAfterVideo?.isCompleted).toBe(true);
     });
 

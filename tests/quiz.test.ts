@@ -1,6 +1,61 @@
 import { describe, it, expect } from 'vitest';
+import { QuizSubmissionSchema } from '@/services/quiz.service';
 
 describe('Phase 5 — Checkpoint Quiz Unit Tests', () => {
+  describe('Server-Side Zod Schema Validation (QuizSubmissionSchema)', () => {
+    it('should validate legitimate submission payload', () => {
+      const validPayload = {
+        answers: [
+          { question_id: 'q_1', selected_option_id: 'opt_1' },
+          { question_id: 'q_2', selected_option_id: 'opt_2' },
+        ],
+      };
+      const result = QuizSubmissionSchema.safeParse(validPayload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.answers.length).toBe(2);
+      }
+    });
+
+    it('should reject payload when answers is not an array', () => {
+      expect(QuizSubmissionSchema.safeParse({ answers: 'not-an-array' }).success).toBe(false);
+      expect(QuizSubmissionSchema.safeParse({ answers: 123 }).success).toBe(false);
+      expect(QuizSubmissionSchema.safeParse({ answers: {} }).success).toBe(false);
+    });
+
+    it('should reject payload when answers array is empty', () => {
+      expect(QuizSubmissionSchema.safeParse({ answers: [] }).success).toBe(false);
+    });
+
+    it('should reject payload when question_id is not a string or is empty', () => {
+      expect(
+        QuizSubmissionSchema.safeParse({
+          answers: [{ question_id: 123, selected_option_id: 'opt_1' }],
+        }).success
+      ).toBe(false);
+
+      expect(
+        QuizSubmissionSchema.safeParse({
+          answers: [{ question_id: '', selected_option_id: 'opt_1' }],
+        }).success
+      ).toBe(false);
+    });
+
+    it('should reject payload when selected_option_id is not a string or is empty', () => {
+      expect(
+        QuizSubmissionSchema.safeParse({
+          answers: [{ question_id: 'q_1', selected_option_id: 456 }],
+        }).success
+      ).toBe(false);
+
+      expect(
+        QuizSubmissionSchema.safeParse({
+          answers: [{ question_id: 'q_1', selected_option_id: '' }],
+        }).success
+      ).toBe(false);
+    });
+  });
+
   describe('Deterministic Scoring & Percentage Formula', () => {
     function calculateScore(correctCount: number, totalQuestions: number): number {
       if (totalQuestions <= 0) return 0;
