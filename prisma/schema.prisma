@@ -58,6 +58,7 @@ model Module {
   title       String   @db.VarChar(255)
   slug        String   @db.VarChar(255)
   description String?  @db.Text
+  isPublished Boolean  @default(true) @map("is_published")
   orderIndex  Int      @default(0) @map("order_index")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -67,6 +68,7 @@ model Module {
 
   @@unique([courseId, slug], name: "uq_module_course_slug")
   @@index([courseId])
+  @@index([courseId, isPublished, orderIndex])
   @@map("modules")
 }
 
@@ -78,6 +80,7 @@ model Lesson {
   youtubeVideoId String   @map("youtube_video_id") @db.VarChar(50)
   summaryContent String?  @map("summary_content") @db.Text
   speakingPrompt String?  @map("speaking_prompt") @db.Text
+  isPublished    Boolean  @default(true) @map("is_published")
   orderIndex     Int      @default(0) @map("order_index")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -88,6 +91,7 @@ model Lesson {
 
   @@unique([moduleId, slug], name: "uq_lesson_module_slug")
   @@index([moduleId])
+  @@index([moduleId, isPublished, orderIndex])
   @@map("lessons")
 }
 
