@@ -1,10 +1,35 @@
 import { db } from '@/lib/db';
 import { EnrollmentService } from './enrollment.service';
+import { z } from 'zod';
 
 export interface QuizAnswerSubmission {
   question_id: string;
   selected_option_id: string;
 }
+
+export const QuizAnswerSchema = z.object({
+  question_id: z
+    .string({
+      required_error: 'question_id wajib berupa string',
+      invalid_type_error: 'question_id harus berupa string',
+    })
+    .min(1, 'question_id tidak boleh kosong'),
+  selected_option_id: z
+    .string({
+      required_error: 'selected_option_id wajib berupa string',
+      invalid_type_error: 'selected_option_id harus berupa string',
+    })
+    .min(1, 'selected_option_id tidak boleh kosong'),
+});
+
+export const QuizSubmissionSchema = z.object({
+  answers: z
+    .array(QuizAnswerSchema, {
+      required_error: 'answers wajib berupa array',
+      invalid_type_error: 'answers harus berupa array',
+    })
+    .min(1, 'answers tidak boleh kosong'),
+});
 
 export class QuizService {
   /**
@@ -137,18 +162,23 @@ export class QuizService {
   static async submitQuiz(
     userId: string,
     quizId: string,
-    payload: { answers: QuizAnswerSubmission[] }
+    payload: unknown
   ) {
-    if (!payload || !Array.isArray(payload.answers)) {
+    // 1. Zod Schema Validation
+    const parseResult = QuizSubmissionSchema.safeParse(payload);
+    if (!parseResult.success) {
       const error: any = new Error('Payload jawaban kuis tidak valid.');
       error.code = 'VALIDATION_ERROR';
       error.status = 400;
+      error.details = parseResult.error.errors;
       throw error;
     }
 
+    const validatedAnswers = parseResult.data.answers;
+
     // Check for duplicate question_ids in payload
     const submittedQuestionIds = new Set<string>();
-    for (const ans of payload.answers) {
+    for (const ans of validatedAnswers) {
       if (submittedQuestionIds.has(ans.question_id)) {
         const error: any = new Error(
           'Payload jawaban mengandung pertanyaan duplikat.'
@@ -198,13 +228,13 @@ export class QuizService {
       throw error;
     }
 
-    // 1. Strict Hierarchy & Tampering Validation
+    // 2. Strict Hierarchy & Tampering Validation
     const questionsMap = new Map<string, (typeof quiz.questions)[0]>();
     for (const q of quiz.questions) {
       questionsMap.set(q.id, q);
     }
 
-    for (const ans of payload.answers) {
+    for (const ans of validatedAnswers) {
       const question = questionsMap.get(ans.question_id);
       if (!question) {
         const error: any = new Error(
@@ -229,10 +259,10 @@ export class QuizService {
     // Auto-enroll user in course if needed
     await EnrollmentService.autoEnroll(userId, quiz.lesson.module.course.id);
 
-    // 2. Atomic Database Transaction: Grade -> Create Attempt -> Aggregate Best Score -> Update Lesson Progress
+    // 3. Atomic Database Transaction: Grade -> Create Attempt -> Aggregate Best Score -> Update Lesson Progress
     return db.$transaction(async (tx) => {
       const answersMap = new Map<string, string>();
-      for (const ans of payload.answers) {
+      for (const ans of validatedAnswers) {
         answersMap.set(ans.question_id, ans.selected_option_id);
       }
 
@@ -272,7 +302,7 @@ export class QuizService {
           quizId: quiz.id,
           score,
           isPassed,
-          answersPayload: payload.answers as any,
+          answersPayload: validatedAnswers as any,
         },
       });
 

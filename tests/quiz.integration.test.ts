@@ -169,7 +169,49 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
     });
   });
 
-  describe('2. Strict Payload Validation & Tampering Rejection', () => {
+  describe('2. Server-Side Zod Validation & Tampering Rejection', () => {
+    it('should reject non-array answers in payload with 400 VALIDATION_ERROR', async () => {
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/quizzes/${targetQuiz.id}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${studentTokenA}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ answers: 'invalid-string' }),
+        }
+      );
+
+      const res = await submitQuizByIdRoute(req, { params: { id: targetQuiz.id } });
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject malformed question_id in payload with 400 VALIDATION_ERROR', async () => {
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/quizzes/${targetQuiz.id}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${studentTokenA}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            answers: [{ question_id: '', selected_option_id: 'opt_123' }],
+          }),
+        }
+      );
+
+      const res = await submitQuizByIdRoute(req, { params: { id: targetQuiz.id } });
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('VALIDATION_ERROR');
+    });
+
     it('should reject non-existent question_id with 400 INVALID_QUESTION_ID', async () => {
       const invalidQuestionId = '00000000-0000-0000-0000-000000000000';
       const validOptionId = targetQuiz.questions[0].options[0].id;
@@ -430,7 +472,7 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
     });
   });
 
-  describe('4. Dual-Trigger Lesson Completion Engine (PRD-02 & PRD-03)', () => {
+  describe('4. Dual-Trigger Lesson Completion Engine & Concurrency Hardening (PRD-02 & PRD-03)', () => {
     it('Case A: Quiz passed first -> Lesson incomplete until Video completed', async () => {
       // User B has quiz score = 100, but videoCompleted = false
       const progressBeforeVideo = await db.lessonProgress.findUnique({
@@ -507,7 +549,54 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
       expect(progress?.isCompleted).toBe(true);
     });
 
-    it('Case C: User isolation - User A cannot see or mutate User B attempts', async () => {
+    it('Case C: Concurrent submission hardening - concurrent submissions with lower scores preserve isCompleted = true and best_score', async () => {
+      const wrongAnswers = targetQuiz.questions.map((q: any) => ({
+        question_id: q.id,
+        selected_option_id: q.options.find((o: any) => !o.isCorrect).id,
+      }));
+
+      // Launch 5 concurrent submissions simultaneously
+      const concurrentRequests = Array.from({ length: 5 }).map(() =>
+        submitQuizByIdRoute(
+          new NextRequest(
+            `http://localhost:3000/api/v1/quizzes/${targetQuiz.id}/submit`,
+            {
+              method: 'POST',
+              headers: {
+                authorization: `Bearer ${studentTokenB}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({ answers: wrongAnswers }),
+            }
+          ),
+          { params: { id: targetQuiz.id } }
+        )
+      );
+
+      const responses = await Promise.all(concurrentRequests);
+
+      for (const res of responses) {
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.data.best_score).toBe(100);
+        expect(json.data.lesson_completion.is_completed).toBe(true);
+      }
+
+      // Verify DB progress state is pristine
+      const finalProgress = await db.lessonProgress.findUnique({
+        where: {
+          uq_user_lesson_progress: {
+            userId: studentUserB.id,
+            lessonId: targetLesson.id,
+          },
+        },
+      });
+      expect(finalProgress?.isCompleted).toBe(true);
+      expect(finalProgress?.videoCompleted).toBe(true);
+    });
+
+    it('Case D: User isolation - User A cannot see or mutate User B attempts', async () => {
       const reqA = new NextRequest(
         `http://localhost:3000/api/v1/quizzes/${targetQuiz.id}/attempts`,
         {
@@ -527,7 +616,7 @@ describe('Phase 5 Checkpoint Quiz & Completion Engine Integration Tests', () => 
       const jsonB = await resB.json();
 
       expect(jsonA.data.attempts.length).toBe(2);
-      expect(jsonB.data.attempts.length).toBe(2);
+      expect(jsonB.data.attempts.length).toBe(7);
       expect(jsonA.data.attempts[0].id).not.toBe(jsonB.data.attempts[0].id);
     });
   });
