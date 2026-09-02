@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
+import { YouTubePlayer } from '@/components/lesson/YouTubePlayer';
 import { CourseService } from '@/services/course.service';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/jwt';
@@ -66,23 +67,14 @@ export default async function LessonRoomPage({
               </h1>
             </div>
 
-            {/* YouTube Video Learning Container (Phase 3 Container Preparation) */}
-            <div className="bg-slate-900 rounded-xl overflow-hidden shadow-sm aspect-video relative flex items-center justify-center border border-slate-800">
-              <div className="text-center p-6 space-y-3">
-                <div className="w-14 h-14 rounded-full bg-red-600/90 text-white flex items-center justify-center mx-auto shadow-md">
-                  ▶
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-white">Video Pembelajaran YouTube</h3>
-                  <p className="text-xs text-slate-400">
-                    Video ID: <code className="bg-slate-800 px-2 py-0.5 rounded text-indigo-300">{lessonData.youtube_video_id}</code>
-                  </p>
-                  <p className="text-xs text-slate-400 pt-1">
-                    (Pemutar interaktif & pelacakan tontonan video akan aktif pada Phase 3)
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* Interactive YouTube Video Learning Player & Progress Tracking (Phase 3) */}
+            <YouTubePlayer
+              lessonId={lessonData.id}
+              videoId={lessonData.youtube_video_id}
+              initialCompleted={lessonData.user_progress.video_completed}
+              courseSlug={lessonData.course_slug}
+              lessonSlug={lessonData.slug}
+            />
 
             {/* Speaking Practice Card (Phase 4 Preparation) */}
             {lessonData.speaking_prompt && (
