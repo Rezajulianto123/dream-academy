@@ -22,7 +22,12 @@ export async function GET(
       },
     });
 
-    if (!lessonMeta) {
+    if (
+      !lessonMeta ||
+      !lessonMeta.isPublished ||
+      !lessonMeta.module.isPublished ||
+      !lessonMeta.module.course.isPublished
+    ) {
       return NextResponse.json(
         {
           success: false,
