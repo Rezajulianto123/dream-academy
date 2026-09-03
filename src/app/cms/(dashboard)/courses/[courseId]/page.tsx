@@ -772,6 +772,14 @@ export default function CmsCurriculumBuilderPage() {
                                 </button>
                               </div>
 
+                              {/* Quiz Builder Link */}
+                              <Link
+                                href={`/cms/courses/${courseId}/lessons/${les.id}/quiz`}
+                                className="rounded bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition inline-block"
+                              >
+                                Kelola Kuis
+                              </Link>
+
                               {/* Toggle Publish */}
                               <button
                                 onClick={() => handleTogglePublishLesson(les)}
