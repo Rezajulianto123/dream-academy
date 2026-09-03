@@ -64,7 +64,12 @@ export class QuizService {
       },
     });
 
-    if (!quiz) {
+    if (
+      !quiz ||
+      !quiz.lesson.isPublished ||
+      !quiz.lesson.module.isPublished ||
+      !quiz.lesson.module.course.isPublished
+    ) {
       const error: any = new Error('Kuis tidak ditemukan.');
       error.code = 'QUIZ_NOT_FOUND';
       error.status = 404;
@@ -119,9 +124,10 @@ export class QuizService {
       where: { slug: courseSlug },
       include: {
         modules: {
+          where: { isPublished: true },
           include: {
             lessons: {
-              where: { slug: lessonSlug },
+              where: { slug: lessonSlug, isPublished: true },
               include: {
                 quiz: true,
               },
@@ -131,7 +137,7 @@ export class QuizService {
       },
     });
 
-    if (!course) {
+    if (!course || !course.isPublished) {
       const error: any = new Error('Kursus tidak ditemukan.');
       error.code = 'COURSE_NOT_FOUND';
       error.status = 404;
@@ -139,7 +145,7 @@ export class QuizService {
     }
 
     const lesson = course.modules.flatMap((m) => m.lessons)[0];
-    if (!lesson) {
+    if (!lesson || !lesson.isPublished) {
       const error: any = new Error('Lesson tidak ditemukan.');
       error.code = 'LESSON_NOT_FOUND';
       error.status = 404;
