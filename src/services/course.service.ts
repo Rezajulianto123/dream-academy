@@ -8,8 +8,11 @@ export class CourseService {
       orderBy: { orderIndex: 'asc' },
       include: {
         modules: {
+          where: { isPublished: true },
+          orderBy: { orderIndex: 'asc' },
           include: {
             lessons: {
+              where: { isPublished: true },
               select: { id: true },
             },
           },
@@ -40,9 +43,11 @@ export class CourseService {
       where: { slug },
       include: {
         modules: {
+          where: { isPublished: true },
           orderBy: { orderIndex: 'asc' },
           include: {
             lessons: {
+              where: { isPublished: true },
               orderBy: { orderIndex: 'asc' },
               include: {
                 quiz: {
@@ -55,7 +60,7 @@ export class CourseService {
       },
     });
 
-    if (!course) {
+    if (!course || !course.isPublished) {
       const error: any = new Error('Kursus tidak ditemukan.');
       error.code = 'COURSE_NOT_FOUND';
       error.status = 404;
@@ -69,18 +74,20 @@ export class CourseService {
       const allLessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id));
       const allQuizIds = course.modules.flatMap((m) => m.lessons.map((l) => l.quiz?.id).filter(Boolean)) as string[];
 
-      const progressRecords = await db.lessonProgress.findMany({
-        where: {
-          userId,
-          lessonId: { in: allLessonIds },
-        },
-      });
-
-      for (const p of progressRecords) {
-        progressMap.set(p.lessonId, {
-          isCompleted: p.isCompleted,
-          videoCompleted: p.videoCompleted,
+      if (allLessonIds.length > 0) {
+        const progressRecords = await db.lessonProgress.findMany({
+          where: {
+            userId,
+            lessonId: { in: allLessonIds },
+          },
         });
+
+        for (const p of progressRecords) {
+          progressMap.set(p.lessonId, {
+            isCompleted: p.isCompleted,
+            videoCompleted: p.videoCompleted,
+          });
+        }
       }
 
       if (allQuizIds.length > 0) {
@@ -154,9 +161,11 @@ export class CourseService {
       where: { slug: courseSlug },
       include: {
         modules: {
+          where: { isPublished: true },
           orderBy: { orderIndex: 'asc' },
           include: {
             lessons: {
+              where: { isPublished: true },
               orderBy: { orderIndex: 'asc' },
               select: {
                 id: true,
@@ -164,6 +173,7 @@ export class CourseService {
                 slug: true,
                 orderIndex: true,
                 moduleId: true,
+                isPublished: true,
               },
             },
           },
@@ -171,7 +181,7 @@ export class CourseService {
       },
     });
 
-    if (!course) {
+    if (!course || !course.isPublished) {
       const error: any = new Error('Kursus tidak ditemukan.');
       error.code = 'COURSE_NOT_FOUND';
       error.status = 404;
@@ -184,7 +194,7 @@ export class CourseService {
 
     for (const mod of course.modules) {
       const found = mod.lessons.find((l) => l.slug === lessonSlug);
-      if (found) {
+      if (found && found.isPublished) {
         targetLesson = found;
         targetModule = mod;
         break;
@@ -214,6 +224,13 @@ export class CourseService {
         },
       },
     });
+
+    if (!fullLesson || !fullLesson.isPublished) {
+      const error: any = new Error('Lesson tidak ditemukan.');
+      error.code = 'LESSON_NOT_FOUND';
+      error.status = 404;
+      throw error;
+    }
 
     // Fetch user progress for this lesson
     const progress = await db.lessonProgress.findUnique({

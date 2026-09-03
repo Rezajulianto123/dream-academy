@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 interface CourseItem {
   id: string;
@@ -333,6 +334,12 @@ export default function CmsCoursesPage() {
                     </td>
 
                     <td className="px-6 py-4 text-right space-x-2">
+                      <Link
+                        href={`/cms/courses/${course.id}`}
+                        className="px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors inline-block"
+                      >
+                        Kelola Kurikulum
+                      </Link>
                       <button
                         onClick={() => handleOpenEditModal(course)}
                         type="button"
